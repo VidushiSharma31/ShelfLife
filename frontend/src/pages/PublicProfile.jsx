@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import BookCard from "../components/BookCard";
+import BookRow from "../components/BookRow";
+import Avatar from "../components/Avatar";
 import { getPublicProfile } from "../services/profileService";
 
 function PublicProfile() {
@@ -26,11 +27,7 @@ function PublicProfile() {
   return (
     <main className="app-page">
       <section className="profile-hero">
-        <div className="profile-avatar">
-          {data.profile.profilePictureUrl
-            ? <img src={data.profile.profilePictureUrl} alt="" />
-            : data.profile.displayName.slice(0, 1).toUpperCase()}
-        </div>
+        <Avatar name={data.profile.displayName} src={data.profile.profilePictureUrl} className="profile-avatar" />
         <div className="profile-intro"><p className="eyebrow">SHELFLIFE READER</p><h1>{data.profile.displayName}</h1><p>{data.profile.bio || "A reader on ShelfLife."}</p></div>
       </section>
       <section className="stats-grid profile-stats">
@@ -42,17 +39,9 @@ function PublicProfile() {
         <section className="dashboard-section" key={shelf.id}>
           <div className="section-header"><h2>{shelf.name}</h2><span>{shelf.books.length} books</span></div>
           {shelf.books.length ? (
-            <div className="book-grid">
+            <div className="book-row-list">
               {shelf.books.map((entry) => (
-                <div className="book-tile" key={entry.book.id}>
-                  <BookCard book={{
-                    openLibraryId: entry.book.openLibraryId,
-                    title: entry.book.title,
-                    authors: entry.book.authorNames.map((name) => ({ name })),
-                    coverUrl: entry.book.coverUrl,
-                    firstPublishYear: entry.book.publicationYear,
-                  }} />
-                </div>
+                <BookRow key={entry.book.id} book={entry.book} />
               ))}
             </div>
           ) : <p className="empty-panel">This public shelf is empty.</p>}

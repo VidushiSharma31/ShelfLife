@@ -10,7 +10,7 @@ ShelfLife combines Open Library discovery with a personal library for organizing
 - Data access: Prisma ORM configured for PostgreSQL
 - Authentication: short-lived JWT access tokens held in frontend memory and rotating, HttpOnly refresh cookies
 - Personal library: five default shelves, custom shelves, book ratings, private notes, and page progress
-- Profiles: editable private account profile and public profiles that show only public shelves
+- Profiles: editable account profile with locally stored profile images, favorite-genre preferences, and public profiles that show only public shelves
 
 ## Setup
 
@@ -111,7 +111,9 @@ All `/api/shelves`, `/api/reading`, `/api/profile/me`, and `/api/auth/me` endpoi
 - `POST /api/shelves/:shelfId/books` - Add or move an Open Library book to one of the user's shelves
 - `PATCH /api/reading/:entryId` - Update page progress, rating, private notes, or move a book to another shelf
 - `DELETE /api/reading/:entryId` - Remove a book from the user's library
-- `PATCH /api/profile/me` - Update the authenticated user's display name, bio, or profile picture URL
+- `PATCH /api/profile/me` - Update the authenticated user's display name or bio
+- `PUT /api/profile/me/avatar` / `DELETE /api/profile/me/avatar` - Upload or remove the authenticated user's profile image (JPEG, PNG, or WebP; maximum 5 MB)
+- `GET /api/profile/me/genres` / `PUT /api/profile/me/genres` - Read or replace the authenticated user's favorite genres
 - `GET /api/profile/users/:userId` - Read a public profile and its public shelves (no email or private notes)
 
 ## Known limitations
@@ -119,3 +121,4 @@ All `/api/shelves`, `/api/reading`, `/api/profile/me`, and `/api/auth/me` endpoi
 - Friend connections and other social interactions are not implemented; the Friends page points readers to their public profile.
 - Open Library search and detail pages require a working connection to `openlibrary.org`.
 - Default shelves are private unless the owner explicitly changes their visibility. Custom shelves are private by default, and reading notes are always private.
+- Profile images are stored in `backend/uploads` and served by the API. This is suitable for a single-instance local deployment; multi-instance or ephemeral deployments should use shared object storage. The upload directory is excluded from Git.

@@ -42,8 +42,18 @@ model User {
   sentFriendships   Friendship[]   @relation("UserSentFriendships")
   receivedFriendships Friendship[] @relation("UserReceivedFriendships")
   refreshTokens     RefreshToken[]
+  genres            UserGenre[]
 
   @@index([email])
+}
+
+model UserGenre {
+  userId String
+  genre  String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, genre])
+  @@index([genre])
 }
 
 model Book {

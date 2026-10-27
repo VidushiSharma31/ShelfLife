@@ -9,11 +9,13 @@ const {
   hashToken,
 } = require("../utils/auth");
 const { ensureDefaultShelves } = require("../services/shelfService");
+const { SUPPORTED_GENRES, normalizeGenres } = require("../utils/genres");
 
 const registerSchema = z.object({
   displayName: z.string().trim().min(2).max(60),
   email: z.string().trim().email(),
   password: z.string().min(8).max(128),
+  favoriteGenres: z.array(z.enum(SUPPORTED_GENRES)).max(SUPPORTED_GENRES.length).optional().default([]),
 });
 
 const loginSchema = z.object({
@@ -27,6 +29,7 @@ const safeUser = (user) => ({
   email: user.email,
   profilePictureUrl: user.profilePictureUrl,
   bio: user.bio,
+  favoriteGenres: normalizeGenres((user.genres || []).map(({ genre }) => genre)),
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });
@@ -88,7 +91,7 @@ const register = async (req, res) => {
       return res.status(400).json({ message: "Please provide a valid display name, email, and password" });
     }
 
-    const { displayName, email, password } = validated.data;
+    const { displayName, email, password, favoriteGenres } = validated.data;
     const normalizedEmail = normalizeEmail(email);
 
     const passwordHash = await bcrypt.hash(password, 12);
@@ -97,9 +100,15 @@ const register = async (req, res) => {
       const createdUser = await tx.user.create({
         data: { displayName, email: normalizedEmail, passwordHash },
       });
+      const genres = normalizeGenres(favoriteGenres);
+      if (genres.length) {
+        await tx.userGenre.createMany({
+          data: genres.map((genre) => ({ userId: createdUser.id, genre })),
+        });
+      }
       await ensureDefaultShelves(tx, createdUser.id);
       await issueRefreshToken(createdUser.id, tx, refreshToken);
-      return createdUser;
+      return { ...createdUser, genres: genres.map((genre) => ({ genre })) };
     });
 
     const accessToken = buildAccessToken(user);
@@ -128,7 +137,10 @@ const login = async (req, res) => {
 
     const { email, password } = validated.data;
     const normalizedEmail = normalizeEmail(email);
-    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      include: { genres: true },
+    });
 
     if (!user) {
       return res.status(401).json({ message: "Invalid email or password" });
@@ -210,7 +222,10 @@ const refreshAccessToken = async (req, res) => {
     }
 
     const rotatedToken = await rotateRefreshToken(refreshToken, validToken.userId);
-    const user = await prisma.user.findUnique({ where: { id: validToken.userId } });
+    const user = await prisma.user.findUnique({
+      where: { id: validToken.userId },
+      include: { genres: true },
+    });
 
     if (!user) {
       return res.status(401).json({ message: "User no longer exists" });
@@ -234,4 +249,5 @@ module.exports = {
   logout,
   getCurrentUser,
   refreshAccessToken,
+  registerSchema,
 };

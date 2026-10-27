@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import BookCard from "../components/BookCard";
+import BookRow from "../components/BookRow";
 import { useAuth } from "../context/useAuth";
 import { getDashboard } from "../services/readingService";
 
@@ -89,18 +89,11 @@ function Dashboard() {
       {data.recentlyUpdated.length > 0 && (
         <section className="dashboard-section">
           <div className="section-header"><h2>Recently updated</h2><Link to="/shelves">Open your library</Link></div>
-          <div className="book-grid">
+          <div className="book-row-list">
             {data.recentlyUpdated.map((entry) => (
-              <div className="book-tile" key={entry.id}>
-                <BookCard book={{
-                  openLibraryId: entry.book.openLibraryId,
-                  title: entry.book.title,
-                  authors: entry.book.authorNames.map((name) => ({ name })),
-                  coverUrl: entry.book.coverUrl,
-                  firstPublishYear: entry.book.publicationYear,
-                }} />
+              <BookRow key={entry.id} book={entry.book}>
                 <p className="entry-shelf-label">{entry.shelf.name}</p>
-              </div>
+              </BookRow>
             ))}
           </div>
         </section>

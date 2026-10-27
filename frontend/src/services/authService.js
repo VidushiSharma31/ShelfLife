@@ -21,7 +21,10 @@ const responseData = async (response) => {
 
 const request = async (path, options = {}, retry = true) => {
   const headers = new Headers(options.headers || {});
-  if (options.body && typeof options.body !== "string") {
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
+  const isBinaryBody = typeof Blob !== "undefined" && options.body instanceof Blob;
+  const isJsonBody = options.body && typeof options.body !== "string" && !isFormData && !isBinaryBody;
+  if (isJsonBody) {
     headers.set("Content-Type", "application/json");
   }
   if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
@@ -29,7 +32,7 @@ const request = async (path, options = {}, retry = true) => {
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers,
-    body: options.body && typeof options.body !== "string"
+    body: isJsonBody
       ? JSON.stringify(options.body)
       : options.body,
     credentials: "include",

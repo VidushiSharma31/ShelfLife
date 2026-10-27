@@ -13,6 +13,7 @@ import ShelfDetails from "./pages/ShelfDetails";
 import Profile from "./pages/Profile";
 import PublicProfile from "./pages/PublicProfile";
 import Friends from "./pages/Friends";
+import FavoriteGenres from "./pages/FavoriteGenres";
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
@@ -54,6 +55,7 @@ function AppRoutes() {
         <Route path="/shelves/:shelfId" element={<RequireAuth><ShelfDetails /></RequireAuth>} />
         <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
         <Route path="/profile/edit" element={<RequireAuth><Profile edit /></RequireAuth>} />
+        <Route path="/profile/genres" element={<RequireAuth><FavoriteGenres /></RequireAuth>} />
         <Route path="/users/:userId" element={<PublicProfile />} />
         <Route path="/friends" element={<RequireAuth><Friends /></RequireAuth>} />
         <Route path="*" element={<Navigate to="/" replace />} />

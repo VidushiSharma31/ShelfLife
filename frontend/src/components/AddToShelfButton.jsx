@@ -15,6 +15,9 @@ function AddToShelfButton({ book, initiallyOpen = false }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const existingEntry = shelves
+    .flatMap((shelf) => shelf.books.map((entry) => ({ ...entry, shelf })))
+    .find((entry) => entry.book.openLibraryId === book.openLibraryId);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -91,6 +94,11 @@ function AddToShelfButton({ book, initiallyOpen = false }) {
             <h2 id="add-book-title">Add {book.title} to a shelf</h2>
             {loading ? <p>Loading your shelves...</p> : (
               <form className="stacked-form" onSubmit={save}>
+                {existingEntry && (
+                  <p className="form-message success" role="status">
+                    Already in your collection on {existingEntry.shelf.name}. Choose a shelf to move it.
+                  </p>
+                )}
                 <label>
                   Choose a shelf
                   <select value={shelfId} onChange={(event) => setShelfId(event.target.value)} required>

@@ -11,6 +11,7 @@ const SEARCH_FIELDS = [
   "isbn",
   "publisher",
   "number_of_pages_median",
+  "first_sentence",
   "language",
   "ratings_count",
   "ratings_average",
@@ -118,6 +119,11 @@ const transformSearchResult = (book) => {
 
     pageCount:
       book.number_of_pages_median || null,
+
+    description:
+      Array.isArray(book.first_sentence)
+        ? book.first_sentence.join(" ")
+        : book.first_sentence || "",
 
     language:
       book.language?.[0] || null,

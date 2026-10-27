@@ -3,6 +3,22 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/useAuth";
 
+const GENRES = [
+  "Fantasy",
+  "Science Fiction",
+  "Mystery",
+  "Thriller",
+  "Romance",
+  "Historical Fiction",
+  "Horror",
+  "Biography",
+  "History",
+  "Self-Help",
+  "Philosophy",
+  "Poetry",
+  "Contemporary Fiction",
+];
+
 function Auth() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -16,6 +32,8 @@ function Auth() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [favoriteGenres, setFavoriteGenres] = useState([]);
+  const [genresSkipped, setGenresSkipped] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -31,7 +49,7 @@ function Auth() {
     try {
       const payload = mode === "login"
         ? { email: form.email, password: form.password }
-        : form;
+        : { ...form, favoriteGenres };
 
       const result = mode === "login"
         ? await signIn(payload)
@@ -100,6 +118,45 @@ function Auth() {
                 maxLength={60}
               />
             </label>
+          )}
+
+          {mode === "register" && (
+            <fieldset className="genre-picker">
+              <legend>What do you enjoy reading? <span>Optional</span></legend>
+              <p>Choose a few genres to personalize your Discover page.</p>
+              <div className="genre-chips">
+                {GENRES.map((genre) => {
+                  const selected = favoriteGenres.includes(genre);
+                  return (
+                    <label className={selected ? "genre-chip selected" : "genre-chip"} key={genre}>
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        disabled={loading}
+                        onChange={() => {
+                          setGenresSkipped(false);
+                          setFavoriteGenres((current) => selected
+                            ? current.filter((value) => value !== genre)
+                            : [...current, genre]);
+                        }}
+                      />
+                      {genre}
+                    </label>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                className="text-button genre-skip"
+                disabled={loading}
+                onClick={() => {
+                  setFavoriteGenres([]);
+                  setGenresSkipped(true);
+                }}
+              >
+                {genresSkipped ? "Genres skipped" : "Skip for now"}
+              </button>
+            </fieldset>
           )}
 
           <label>

@@ -1,5 +1,8 @@
 import { API_URL } from "./authService";
 
+const searchCache = new Map();
+const CACHE_DURATION_MS = 10 * 60 * 1000;
+
 export const searchBooks = async ({
   query,
   page = 1,
@@ -13,6 +16,10 @@ export const searchBooks = async ({
     sort,
   });
 
+  const cacheKey = params.toString();
+  const cached = searchCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.data;
+
   const response = await fetch(
     `${API_URL}/books/search?${params}`
   );
@@ -21,7 +28,9 @@ export const searchBooks = async ({
     throw new Error("Failed to search books");
   }
 
-  return response.json();
+  const data = await response.json();
+  searchCache.set(cacheKey, { data, expiresAt: Date.now() + CACHE_DURATION_MS });
+  return data;
 };
 
 

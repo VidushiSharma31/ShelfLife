@@ -31,6 +31,7 @@ const requireAuth = async (req, res, next) => {
       createdAt: true,
       updatedAt: true,
       tokenVersion: true,
+      genres: { select: { genre: true } },
     },
   });
 
@@ -38,6 +39,8 @@ const requireAuth = async (req, res, next) => {
     return res.status(401).json({ message: "User no longer exists" });
   }
 
+  user.favoriteGenres = user.genres.map(({ genre }) => genre);
+  delete user.genres;
   delete user.tokenVersion;
   req.user = user;
   return next();

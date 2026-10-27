@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const path = require("node:path");
 
 require("dotenv").config();
 
@@ -33,6 +34,12 @@ app.use(
 );
 app.use(cookieParser());
 app.use(express.json());
+app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
+  fallthrough: false,
+  index: false,
+  maxAge: "1d",
+  setHeaders: (response) => response.setHeader("X-Content-Type-Options", "nosniff"),
+}));
 
 app.get("/", (req, res) => {
   res.json({
@@ -48,7 +55,8 @@ app.use("/api/profile", profileRoutes);
 
 app.use((err, req, res, next) => {
   console.error("Unhandled server error:", err);
-  res.status(err.statusCode || 500).json({ message: err.statusCode ? err.message : "Something went wrong" });
+  const status = err.statusCode || err.status || 500;
+  res.status(status).json({ message: status < 500 ? err.message : "Something went wrong" });
 });
 
 const PORT = process.env.PORT || 5000;

@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { deleteShelf, getShelves, removeReading, updateReading, updateShelf } from "../services/readingService";
+import BookRow from "../components/BookRow";
 
 function ReadingEntryCard({ entry, shelves, onChanged }) {
+  const isCurrentlyReading = entry.shelf?.status === "CURRENTLY_READING" || entry.status === "CURRENTLY_READING";
   const [currentPage, setCurrentPage] = useState(entry.currentPage ?? "");
   const [totalPages, setTotalPages] = useState(entry.totalPages ?? entry.book.pageCount ?? "");
   const [rating, setRating] = useState(entry.personalRating ?? "");
@@ -19,8 +21,10 @@ function ReadingEntryCard({ entry, shelves, onChanged }) {
     try {
       await updateReading(entry.id, {
         shelfId: targetShelf,
-        currentPage: currentPage === "" ? null : Number(currentPage),
-        totalPages: totalPages === "" ? null : Number(totalPages),
+        ...(isCurrentlyReading ? {
+          currentPage: currentPage === "" ? null : Number(currentPage),
+          totalPages: totalPages === "" ? null : Number(totalPages),
+        } : {}),
         personalRating: rating === "" ? null : Number(rating),
         notes: notes || null,
       });
@@ -46,37 +50,45 @@ function ReadingEntryCard({ entry, shelves, onChanged }) {
   };
 
   return (
-    <article className="managed-book">
-      <div className="managed-book-cover">
-        {entry.book.coverUrl ? <img src={entry.book.coverUrl} alt="" /> : <span>No cover</span>}
-      </div>
-      <div className="managed-book-main">
-        <p className="eyebrow">{entry.book.authorNames.join(", ") || "Unknown Author"}</p>
-        <h2>{entry.book.title}</h2>
-        {entry.totalPages ? (
-          <div className="reading-progress">
-            <div className="progress-track"><span style={{ width: `${entry.progressPercent || 0}%` }} /></div>
-            <p>{entry.currentPage || 0} / {entry.totalPages} pages · {entry.progressPercent || 0}%</p>
-          </div>
-        ) : (
-          <p className="progress-copy">Page progress saved without an estimated percentage.</p>
-        )}
-        <form className="entry-edit-form" onSubmit={save}>
+    <BookRow className="managed-book" book={entry.book}>
+      {isCurrentlyReading && (
+        <div className="reading-progress">
+          {entry.totalPages ? (
+            <>
+              <div
+                className="progress-track"
+                role="progressbar"
+                aria-label="Reading progress"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow={entry.progressPercent || 0}
+              >
+                <span style={{ width: `${entry.progressPercent || 0}%` }} />
+              </div>
+              <p>{entry.currentPage || 0} / {entry.totalPages} pages · {entry.progressPercent || 0}%</p>
+            </>
+          ) : <p className="progress-copy">Add the total page count to see a progress percentage.</p>}
+        </div>
+      )}
+      <form className="entry-edit-form" onSubmit={save}>
+        {isCurrentlyReading && (
           <div className="entry-field-row">
             <label>Current page<input type="number" min="0" max={totalPages || 100000} value={currentPage} onChange={(event) => setCurrentPage(event.target.value)} /></label>
             <label>Total pages<input type="number" min="1" max="100000" value={totalPages} onChange={(event) => setTotalPages(event.target.value)} placeholder="Unknown" /></label>
-            <label>Rating<select value={rating} onChange={(event) => setRating(event.target.value)}><option value="">Not rated</option>{[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value} / 5</option>)}</select></label>
           </div>
+        )}
+        <div className="entry-field-row">
+          <label>Personal rating<select value={rating} onChange={(event) => setRating(event.target.value)}><option value="">Not rated</option>{[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value} / 5</option>)}</select></label>
           <label>Move to shelf<select value={targetShelf} onChange={(event) => setTargetShelf(event.target.value)}>{shelves.map((shelf) => <option key={shelf.id} value={shelf.id}>{shelf.name}</option>)}</select></label>
-          <label>Private notes<textarea rows="3" maxLength="5000" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Your notes are private." /></label>
-          {error && <p className="form-message error">{error}</p>}
-          <div className="entry-actions">
-            <button type="submit" className="primary-action" disabled={saving}>{saving ? "Saving..." : "Save updates"}</button>
-            <button type="button" className="text-button danger-text" disabled={saving} onClick={remove}>Remove book</button>
-          </div>
-        </form>
-      </div>
-    </article>
+        </div>
+        <label>Private notes<textarea rows="3" maxLength="5000" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Your notes are private." /></label>
+        {error && <p className="form-message error" role="alert">{error}</p>}
+        <div className="entry-actions">
+          <button type="submit" className="primary-action" disabled={saving}>{saving ? "Saving..." : isCurrentlyReading ? "Update progress" : "Save updates"}</button>
+          <button type="button" className="text-button danger-text" disabled={saving} onClick={remove}>Remove book</button>
+        </div>
+      </form>
+    </BookRow>
   );
 }
 

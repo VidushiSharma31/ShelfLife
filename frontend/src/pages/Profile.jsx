@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/useAuth";
 import { getDashboard, getShelves } from "../services/readingService";
-import { updateProfile } from "../services/profileService";
+import { removeProfilePicture, updateProfile, uploadProfilePicture } from "../services/profileService";
+import Avatar from "../components/Avatar";
 
 function Profile({ edit = false }) {
   const { user, updateUser } = useAuth();
@@ -13,11 +14,19 @@ function Profile({ edit = false }) {
   const [form, setForm] = useState({
     displayName: user.displayName,
     bio: user.bio || "",
-    profilePictureUrl: user.profilePictureUrl || "",
   });
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [removeImage, setRemoveImage] = useState(false);
+  const [imageError, setImageError] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
+  const previewUrlRef = useRef("");
   const [loading, setLoading] = useState(!edit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => () => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+  }, []);
 
   useEffect(() => {
     if (edit) return;
@@ -34,19 +43,45 @@ function Profile({ edit = false }) {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
   };
 
+  const handleImageChange = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    setImageError("");
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setImageError("Choose a JPEG, PNG, or WebP image.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setImageError("Profile images must be 5 MB or smaller.");
+      return;
+    }
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = URL.createObjectURL(file);
+    setPreviewUrl(previewUrlRef.current);
+    setSelectedImage(file);
+    setRemoveImage(false);
+  };
+
   const save = async (event) => {
     event.preventDefault();
     setSaving(true);
     setError("");
+    let updatedUser;
     try {
-      const { user: updatedUser } = await updateProfile({
+      ({ user: updatedUser } = await updateProfile({
         ...form,
         bio: form.bio || null,
-        profilePictureUrl: form.profilePictureUrl || null,
-      });
+      }));
+      if (selectedImage) {
+        ({ user: updatedUser } = await uploadProfilePicture(selectedImage));
+      } else if (removeImage) {
+        ({ user: updatedUser } = await removeProfilePicture());
+      }
       updateUser(updatedUser);
       navigate("/profile", { replace: true });
     } catch (requestError) {
+      if (updatedUser) updateUser(updatedUser);
       setError(requestError.message || "Unable to save your profile.");
     } finally {
       setSaving(false);
@@ -61,7 +96,36 @@ function Profile({ edit = false }) {
         <form className="profile-form" onSubmit={save}>
           <label>Display name<input name="displayName" value={form.displayName} onChange={handleChange} minLength={2} maxLength={60} required /></label>
           <label>Biography<textarea name="bio" value={form.bio} onChange={handleChange} rows="5" maxLength={500} placeholder="What do you love to read?" /></label>
-          <label>Profile picture URL<input name="profilePictureUrl" value={form.profilePictureUrl} onChange={handleChange} type="url" placeholder="https://example.com/photo.jpg" /></label>
+          <fieldset className="avatar-upload">
+            <legend>Profile photo</legend>
+            <Avatar
+              name={user.displayName}
+              src={previewUrl || (removeImage ? "" : user.profilePictureUrl)}
+              className="profile-avatar"
+            />
+            <label className="secondary-action link-button upload-trigger">
+              Choose image
+              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageChange} />
+            </label>
+            {(user.profilePictureUrl || selectedImage) && (
+              <button
+                type="button"
+                className="text-button danger-text"
+                onClick={() => {
+                  if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+                  previewUrlRef.current = "";
+                  setPreviewUrl("");
+                  setSelectedImage(null);
+                  setRemoveImage(true);
+                  setImageError("");
+                }}
+              >
+                Remove photo
+              </button>
+            )}
+            <p className="field-hint">JPEG, PNG, or WebP. Maximum size: 5 MB.</p>
+            {imageError && <p className="form-message error" role="alert">{imageError}</p>}
+          </fieldset>
           {error && <p className="form-message error">{error}</p>}
           <div className="entry-actions"><button type="submit" className="primary-action" disabled={saving}>{saving ? "Saving..." : "Save profile"}</button><Link className="secondary-action link-button" to="/profile">Cancel</Link></div>
         </form>
@@ -76,9 +140,7 @@ function Profile({ edit = false }) {
   return (
     <main className="app-page">
       <section className="profile-hero">
-        <div className="profile-avatar">
-          {user.profilePictureUrl ? <img src={user.profilePictureUrl} alt="" /> : user.displayName.slice(0, 1).toUpperCase()}
-        </div>
+        <Avatar name={user.displayName} src={user.profilePictureUrl} className="profile-avatar" />
         <div className="profile-intro">
           <p className="eyebrow">MY PROFILE</p><h1>{user.displayName}</h1>
           <p>{user.bio || "A reader building a library, one book at a time."}</p>

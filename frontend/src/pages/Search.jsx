@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import BookCard from "../components/BookCard";
+import BookRow from "../components/BookRow";
 import AddToShelfButton from "../components/AddToShelfButton";
 import { searchBooks } from "../services/bookService";
 
@@ -192,13 +192,14 @@ function Search() {
 
         <section className="search-results">
 
-          <div className="book-grid">
+          <div className="book-row-list">
 
             {books.map((book) => (
-              <div className="book-tile" key={book.openLibraryId}>
-                <BookCard book={book} />
-                <AddToShelfButton book={book} />
-              </div>
+              <BookRow
+                key={book.openLibraryId}
+                book={book}
+                actions={<AddToShelfButton book={book} />}
+              />
             ))}
 
           </div>
