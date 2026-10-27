@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ShelfVisibility {
+  PRIVATE
+  PUBLIC
+}
+
+enum ShelfStatus {
+  WANT_TO_READ
+  CURRENTLY_READING
+  READ
+  ON_HOLD
+  DROPPED
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model User {
+  id                String         @id @default(cuid())
+  displayName       String
+  email             String         @unique
+  passwordHash      String
+  profilePictureUrl String?
+  bio               String?
+  tokenVersion      Int            @default(0)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  shelves           Shelf[]
+  readingEntries    ReadingEntry[]
+  reviews           Review[]
+  sentFriendships   Friendship[]   @relation("UserSentFriendships")
+  receivedFriendships Friendship[] @relation("UserReceivedFriendships")
+  refreshTokens     RefreshToken[]
+
+  @@index([email])
+}
+
+model Book {
+  id              String         @id @default(cuid())
+  openLibraryId   String?        @unique
+  title           String
+  subtitle        String?
+  description     String?
+  coverUrl        String?
+  isbn            String?
+  publicationYear Int?
+  genres          String[]
+  authorNames     String[]         @default([])
+  pageCount       Int?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  readingEntries  ReadingEntry[]
+  reviews         Review[]
+
+  @@index([title])
+  @@index([openLibraryId])
+}
+
+model Shelf {
+  id          String          @id @default(cuid())
+  ownerId     String
+  name        String
+  status      ShelfStatus?
+  description String?
+  visibility  ShelfVisibility @default(PRIVATE)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  owner       User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  books       ReadingEntry[]
+
+  @@unique([ownerId, name])
+  @@unique([ownerId, status])
+  @@unique([ownerId, id])
+  @@index([ownerId, visibility])
+}
+
+model ReadingEntry {
+  id                 String    @id @default(cuid())
+  ownerId            String
+  shelfId            String
+  bookId             String
+  status             ShelfStatus?
+  currentPage        Int?
+  totalPages         Int?
+  personalRating     Int?
+  notes              String?
+  dateAdded          DateTime  @default(now())
+  startDate          DateTime?
+  completionDate     DateTime?
+  lastProgressUpdate DateTime?
+  updatedAt          DateTime  @updatedAt
+  owner              User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  shelf              Shelf     @relation(fields: [ownerId, shelfId], references: [ownerId, id], onDelete: Cascade)
+  book               Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, bookId])
+  @@index([ownerId, shelfId])
+  @@index([status])
+}
+
+model Friendship {
+  id          String            @id @default(cuid())
+  requesterId String
+  receiverId  String
+  status      FriendshipStatus  @default(PENDING)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  acceptedAt  DateTime?
+  requester   User              @relation("UserSentFriendships", fields: [requesterId], references: [id], onDelete: Cascade)
+  receiver    User              @relation("UserReceivedFriendships", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, receiverId])
+  @@index([receiverId, status])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  bookId    String
+  rating    Int
+  text      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+  @@index([bookId, rating])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
