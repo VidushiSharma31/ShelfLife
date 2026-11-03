@@ -2,8 +2,27 @@ const {
   searchOpenLibrary,
   transformSearchResult,
   getOpenLibraryBook,
+  OpenLibraryError,
 } = require("../services/openLibraryService");
 
+const sendCatalogError = (res, error, operation) => {
+  const code = error instanceof OpenLibraryError ? error.code : "OPEN_LIBRARY_UPSTREAM_ERROR";
+  console.error(`Open Library ${operation} failed: ${code}`);
+
+  if (code === "OPEN_LIBRARY_ABORTED") {
+    return res.status(499).json({ code, message: "The book catalog request was cancelled." });
+  }
+  if (code === "OPEN_LIBRARY_TIMEOUT") {
+    return res.status(504).json({ code, message: "The book catalog is taking too long to respond. Please try again." });
+  }
+  if (code === "OPEN_LIBRARY_HTTP_ERROR" && error.upstreamStatus === 404) {
+    return res.status(404).json({ code: "BOOK_NOT_FOUND", message: "This book could not be found in the catalog." });
+  }
+  if (code === "OPEN_LIBRARY_HTTP_ERROR" && error.upstreamStatus === 429) {
+    return res.status(503).json({ code, message: "The book catalog is busy. Please try again shortly." });
+  }
+  return res.status(502).json({ code, message: "The book catalog is temporarily unavailable. Please try again shortly." });
+};
 
 /*
   GET /api/books/search?q=harry+potter
@@ -25,6 +44,9 @@ const searchBooks = async (req, res) => {
       return res.status(400).json({
         message: "Search query is required",
       });
+    }
+    if (query.length > 200 || !Number.isInteger(page) || page < 1) {
+      return res.status(400).json({ message: "Search query or page is invalid" });
     }
 
     const validSorts = [
@@ -51,7 +73,7 @@ const searchBooks = async (req, res) => {
       sort,
     });
 
-    const books = data.docs.map(transformSearchResult);
+    const books = data.docs.map(transformSearchResult).filter((book) => book.openLibraryId);
 
     res.json({
       books,
@@ -71,11 +93,7 @@ const searchBooks = async (req, res) => {
       sort,
     });
   } catch (error) {
-    console.error("Book search error:", error);
-
-    res.status(500).json({
-      message: "Failed to search books",
-    });
+    return sendCatalogError(res, error, "search");
   }
 };
 
@@ -108,11 +126,7 @@ const getBookById = async (req, res) => {
       source: "openlibrary",
     });
   } catch (error) {
-    console.error("Book details error:", error);
-
-    res.status(500).json({
-      message: "Failed to fetch book details",
-    });
+    return sendCatalogError(res, error, "work lookup");
   }
 };
 
@@ -120,4 +134,5 @@ const getBookById = async (req, res) => {
 module.exports = {
   searchBooks,
   getBookById,
+  sendCatalogError,
 };

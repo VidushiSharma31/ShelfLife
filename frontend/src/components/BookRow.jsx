@@ -1,6 +1,18 @@
 import { Link } from "react-router-dom";
 
-function BookRow({ book, actions, children, className = "" }) {
+const displayDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+};
+
+function BookRow({ book, entry, shelves = [], actions, children, className = "" }) {
   const authors = book.authorNames?.length
     ? book.authorNames.join(", ")
     : book.authors?.length
@@ -30,10 +42,34 @@ function BookRow({ book, actions, children, className = "" }) {
         <p className="book-row-author">{authors}</p>
         {year && <p className="book-row-year">{year}</p>}
         {description && <p className="book-row-description">{description}</p>}
-        {!!(book.subjects?.length || book.genres?.length) && (
-          <div className="book-row-tags">
-            {(book.subjects || book.genres).slice(0, 4).map((genre) => <span key={genre}>{genre}</span>)}
-          </div>
+        {entry && (
+          <dl className="book-row-log">
+            <div>
+              <dt>Personal rating</dt>
+              <dd>
+                {entry.personalRating ? (
+                  <span className="book-row-rating" aria-label={`${entry.personalRating} out of 5 stars`}>
+                    <span aria-hidden="true">{"★".repeat(entry.personalRating)}{"☆".repeat(5 - entry.personalRating)}</span>
+                    <span>{entry.personalRating}/5</span>
+                  </span>
+                ) : "Not rated"}
+              </dd>
+            </div>
+            <div>
+              <dt>Shelf</dt>
+              <dd>{shelves.length ? shelves.map((shelf) => shelf.name).join(", ") : entry.shelf?.name || "Unknown shelf"}</dd>
+            </div>
+            <div>
+              <dt>Date added</dt>
+              <dd>{displayDate(entry.dateAdded) || "Not available"}</dd>
+            </div>
+            {entry.completionDate && (
+              <div>
+                <dt>Completed</dt>
+                <dd>{displayDate(entry.completionDate) || "Not available"}</dd>
+              </div>
+            )}
+          </dl>
         )}
         {children}
       </div>

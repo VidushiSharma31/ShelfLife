@@ -14,7 +14,7 @@ function Avatar({ name, src, className = "" }) {
     .join("") || "?";
 
   return (
-    <span className={`avatar ${className}`.trim()} aria-label={name || "Profile"}>
+    <span className={`avatar ${className}`.trim()} role="img" aria-label={name || "Profile"}>
       {imageSource && failedSource !== imageSource ? (
         <img src={imageSource} alt="" onError={() => setFailedSource(imageSource)} />
       ) : initials}

@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import { addBookToShelf, getShelves } from "../services/readingService";
 
-function AddToShelfButton({ book, initiallyOpen = false }) {
+function AddToShelfButton({ book, initiallyOpen = false, guestLabel = "" }) {
   const { user, loading: authLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -82,7 +82,7 @@ function AddToShelfButton({ book, initiallyOpen = false }) {
   return (
     <>
       <button type="button" className="shelf-action" onClick={openDialog} disabled={authLoading}>
-        + Add to Shelf
+        {!user && guestLabel ? guestLabel : "+ Add to Shelf"}
       </button>
       {open && user && (
         <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {

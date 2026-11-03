@@ -14,6 +14,7 @@ import Profile from "./pages/Profile";
 import PublicProfile from "./pages/PublicProfile";
 import Friends from "./pages/Friends";
 import FavoriteGenres from "./pages/FavoriteGenres";
+import BookBuddy from "./components/BookBuddy";
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
@@ -60,6 +61,7 @@ function AppRoutes() {
         <Route path="/friends" element={<RequireAuth><Friends /></RequireAuth>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <BookBuddy />
     </>
   );
 }

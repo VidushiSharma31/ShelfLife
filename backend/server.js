@@ -10,6 +10,7 @@ const authRoutes = require("./routes/authRoutes");
 const shelfRoutes = require("./routes/shelfRoutes");
 const readingRoutes = require("./routes/readingRoutes");
 const profileRoutes = require("./routes/profileRoutes");
+const recommendationRoutes = require("./routes/recommendationRoutes");
 
 const app = express();
 
@@ -52,6 +53,7 @@ app.use("/api/books", bookRoutes);
 app.use("/api/shelves", shelfRoutes);
 app.use("/api/reading", readingRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/recommendations", recommendationRoutes);
 
 app.use((err, req, res, next) => {
   console.error("Unhandled server error:", err);

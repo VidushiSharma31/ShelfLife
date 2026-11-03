@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-import AddToShelfButton from "../components/AddToShelfButton";
-import BookRow from "../components/BookRow";
+import BookCard from "../components/BookCard";
 import { useAuth } from "../context/useAuth";
 import { searchBooks } from "../services/bookService";
 
@@ -17,25 +16,31 @@ function Home() {
   const [recommendationState, setRecommendationState] = useState({ genreKey: "", groups: [], error: "" });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [trendingRetry, setTrendingRetry] = useState(0);
+  const [genreRetry, setGenreRetry] = useState(0);
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setError("");
     searchBooks({ query: "fiction", sort: "trending", limit: 20 })
       .then((data) => { if (active) setBooks(data.books); })
       .catch((requestError) => {
         console.error("Could not load Discover books:", requestError);
-        if (active) setError("Unable to load books right now.");
+        if (active) setError(requestError.message || "The book catalog is temporarily unavailable. Please try again.");
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, []);
+  }, [trendingRetry]);
 
   useEffect(() => {
     if (!user || authLoading || favoriteGenres.length === 0) {
+      setRecommendationState({ genreKey, groups: [], error: "" });
       return undefined;
     }
 
     let active = true;
+    setRecommendationState({ genreKey, groups: [], error: "" });
     Promise.all(favoriteGenres.map(async (genre) => {
       const result = await searchBooks({ query: genre, limit: 5, sort: "relevance" });
       return { genre, books: result.books };
@@ -47,12 +52,12 @@ function Home() {
           setRecommendationState({
             genreKey,
             groups: [],
-            error: "Your genre discoveries could not be loaded. Please try again later.",
+            error: requestError.message || "Your personalized discoveries are temporarily unavailable.",
           });
         }
       });
     return () => { active = false; };
-  }, [authLoading, favoriteGenres, genreKey, user]);
+  }, [authLoading, favoriteGenres, genreKey, genreRetry, user]);
 
   const recommendations = recommendationState.genreKey === genreKey ? recommendationState.groups : [];
   const recommendationError = recommendationState.genreKey === genreKey ? recommendationState.error : "";
@@ -84,20 +89,21 @@ function Home() {
               <Link to="/profile/genres">Choose favorite genres</Link>
             </div>
           ) : recommendationError ? (
-            <p className="search-message error" role="status">{recommendationError}</p>
+            <div className="search-message error" role="alert">
+              <p>{recommendationError}</p>
+              <button type="button" className="secondary-action" onClick={() => setGenreRetry((attempt) => attempt + 1)}>
+                Retry personalized discoveries
+              </button>
+            </div>
           ) : !recommendations.length ? (
             <p className="search-message">Finding books by your favorite genres...</p>
           ) : recommendations.map(({ genre, books: genreBooks }) => (
             <section className="genre-discovery" key={genre}>
               <div className="section-header"><h3>{genre}</h3></div>
               {genreBooks.length ? (
-                <div className="book-row-list">
+                <div className="book-grid">
                   {genreBooks.map((book) => (
-                    <BookRow
-                      key={book.openLibraryId}
-                      book={book}
-                      actions={<AddToShelfButton book={book} />}
-                    />
+                    <BookCard key={book.openLibraryId} book={book} />
                   ))}
                 </div>
               ) : <p className="empty-panel">No titles found for {genre} right now.</p>}
@@ -111,11 +117,23 @@ function Home() {
         {loading ? (
           <div className="search-message">Discovering books...</div>
         ) : error ? (
-          <div className="search-message error" role="alert">{error}</div>
+          <div className="search-message error" role="alert">
+            <p>{error}</p>
+            <button type="button" className="secondary-action" onClick={() => setTrendingRetry((attempt) => attempt + 1)}>
+              Retry
+            </button>
+          </div>
+        ) : !books.length ? (
+          <div className="empty-panel">
+            <p>No books were found right now.</p>
+            <button type="button" className="secondary-action" onClick={() => setTrendingRetry((attempt) => attempt + 1)}>
+              Try again
+            </button>
+          </div>
         ) : (
-          <div className="book-row-list">
+          <div className="book-grid">
             {books.map((book) => (
-              <BookRow key={book.openLibraryId} book={book} />
+              <BookCard key={book.openLibraryId} book={book} />
             ))}
           </div>
         )}

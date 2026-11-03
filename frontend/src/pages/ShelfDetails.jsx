@@ -50,7 +50,12 @@ function ReadingEntryCard({ entry, shelves, onChanged }) {
   };
 
   return (
-    <BookRow className="managed-book" book={entry.book}>
+    <BookRow
+      className="managed-book"
+      book={entry.book}
+      entry={entry}
+      shelves={shelves.filter((shelf) => shelf.books.some((shelfEntry) => shelfEntry.bookId === entry.bookId))}
+    >
       {isCurrentlyReading && (
         <div className="reading-progress">
           {entry.totalPages ? (
