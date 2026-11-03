@@ -31,11 +31,6 @@
   color: var(--arctic);
 }
 
-.book-card > .shelf-action {
-  width: 100%;
-  margin-top: 8px;
-}
-
 body {
   font-family: "DM Sans", sans-serif;
   background: var(--frost);
@@ -764,9 +759,41 @@ a {
 
 .book-actions {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 
   margin-bottom: 35px;
+}
+
+.shelf-book-status {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.shelf-book-status strong {
+  color: var(--deep-sea);
+}
+
+.shelf-action-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.shelf-action-group .shelf-action {
+  margin: 0;
+}
+
+.book-card .shelf-action-group {
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+}
+
+.book-card .shelf-action-group button {
+  width: 100%;
 }
 
 .book-actions button {
@@ -1795,6 +1822,10 @@ a {
   cursor: pointer;
 }
 
+.review-edit-button {
+  margin-top: 14px;
+}
+
 .friends-note {
   margin-top: 20px;
 }
@@ -2467,7 +2498,8 @@ textarea {
 
 .book-row-actions {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: flex-end;
   justify-content: flex-end;
   gap: 8px;
 }

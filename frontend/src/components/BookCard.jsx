@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import AddToShelfButton from "./AddToShelfButton";
 
-function BookCard({ book }) {
+function BookCard({ book, shelves }) {
   const authors = book.authorNames?.length
     ? book.authorNames.join(", ")
     : book.authors?.length
@@ -30,7 +30,7 @@ function BookCard({ book }) {
           <span>{book.firstPublishYear || book.publicationYear}</span>
         )}
       </div>
-      <AddToShelfButton book={book} />
+      <AddToShelfButton book={book} userShelves={shelves} />
     </article>
   );
 }

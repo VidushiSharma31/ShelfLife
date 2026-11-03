@@ -222,10 +222,20 @@ const getPublicProfile = async (req, res) => {
     if (shelf.status === "WANT_TO_READ") stats.wantToRead += shelf.books.length;
     return stats;
   }, { read: 0, currentlyReading: 0, wantToRead: 0 });
+  const recentActivity = user.shelves
+    .flatMap((shelf) => shelf.books.map((entry) => ({
+      id: entry.id,
+      updatedAt: entry.updatedAt,
+      book: entry.book,
+      shelf: { name: shelf.name },
+    })))
+    .sort((left, right) => right.updatedAt - left.updatedAt)
+    .slice(0, 6);
 
   return res.json({
     profile: safeProfile(user),
     stats: publicStats,
+    recentActivity,
     shelves: user.shelves.map((shelf) => ({
       id: shelf.id,
       name: shelf.name,

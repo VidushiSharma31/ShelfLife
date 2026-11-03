@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import BookCard from "../components/BookCard";
 import { useAuth } from "../context/useAuth";
 import { searchBooks } from "../services/bookService";
+import { getShelves } from "../services/readingService";
 
 function Home() {
   const { user, loading: authLoading } = useAuth();
@@ -16,8 +17,23 @@ function Home() {
   const [recommendationState, setRecommendationState] = useState({ genreKey: "", groups: [], error: "" });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [shelfResult, setShelfResult] = useState(null);
   const [trendingRetry, setTrendingRetry] = useState(0);
   const [genreRetry, setGenreRetry] = useState(0);
+  const shelves = shelfResult?.userId === user?.id ? shelfResult.shelves : [];
+  const shelfError = shelfResult?.userId === user?.id ? shelfResult.error : "";
+
+  useEffect(() => {
+    if (!user || authLoading) return undefined;
+
+    let active = true;
+    getShelves()
+      .then(({ shelves: result }) => { if (active) setShelfResult({ userId: user.id, shelves: result, error: "" }); })
+      .catch((requestError) => {
+        if (active) setShelfResult({ userId: user.id, shelves: [], error: requestError.message || "Unable to load your shelf status." });
+      });
+    return () => { active = false; };
+  }, [authLoading, user]);
 
   useEffect(() => {
     let active = true;
@@ -103,7 +119,7 @@ function Home() {
               {genreBooks.length ? (
                 <div className="book-grid">
                   {genreBooks.map((book) => (
-                    <BookCard key={book.openLibraryId} book={book} />
+                    <BookCard key={book.openLibraryId} book={book} shelves={shelves} />
                   ))}
                 </div>
               ) : <p className="empty-panel">No titles found for {genre} right now.</p>}
@@ -114,6 +130,7 @@ function Home() {
 
       <section className="book-section">
         <div className="section-header"><h2>Trending Books</h2></div>
+        {shelfError && <p className="form-message error" role="alert">{shelfError}</p>}
         {loading ? (
           <div className="search-message">Discovering books...</div>
         ) : error ? (
@@ -133,7 +150,7 @@ function Home() {
         ) : (
           <div className="book-grid">
             {books.map((book) => (
-              <BookCard key={book.openLibraryId} book={book} />
+              <BookCard key={book.openLibraryId} book={book} shelves={shelves} />
             ))}
           </div>
         )}

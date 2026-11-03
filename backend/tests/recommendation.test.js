@@ -5,6 +5,8 @@ const {
   requestSchema,
   modelResponseSchema,
   parseModelContent,
+  suggestionResponseSchema,
+  suggestionMessages,
   makeRetrievalQuery,
   loadPersonalization,
   isRereadRequest,
@@ -12,6 +14,7 @@ const {
 } = require("../services/recommendationService");
 const prisma = require("../lib/prisma");
 const { buildSearchPlan, retrieveCandidates } = require("../services/bookRetrieval");
+const { verifySuggestions, scoreMatch } = require("../services/bookLookup");
 const { recommendationRateLimit } = require("../middleware/recommendationRateLimit");
 const { chat, sendChatError } = require("../controllers/recommendationController");
 const {
@@ -382,4 +385,69 @@ test("retrieval throws only when every search failed, and returns [] when search
   const failure = Object.assign(new Error("down"), { code: "OPEN_LIBRARY_UNAVAILABLE", upstreamCode: "OPEN_LIBRARY_TIMEOUT" });
   await assert.rejects(retrieveCandidates("fantasy", { search: async () => { throw failure; } }), { code: "OPEN_LIBRARY_UNAVAILABLE" });
   assert.deepEqual(await retrieveCandidates("fantasy", { search: async () => [] }), []);
+});
+
+test("suggestion matching needs the right title AND author", () => {
+  const book = (title, ...names) => ({ openLibraryId: "OL1W", title, authors: names.map((name) => ({ name })) });
+  const wanted = { title: "The Lightning Thief", author: "Rick Riordan" };
+  assert.ok(scoreMatch(book("The Lightning Thief", "Rick Riordan"), wanted) > scoreMatch(book("Percy Jackson: The Lightning Thief", "Rick Riordan"), wanted));
+  assert.ok(scoreMatch(book("Lightning Thief", "Rick Riordan"), wanted) > 0, "leading 'The' is ignored");
+  assert.equal(scoreMatch(book("The Lightning Thief", "Someone Else"), wanted), 0, "same title, different author");
+  assert.equal(scoreMatch(book("The Lightning Rod", "Rick Riordan"), wanted), 0, "different title");
+  assert.ok(scoreMatch(book("Circe", "Madeline Miller"), { title: "Circe", author: "Madeline Miller" }) > 0);
+  assert.ok(scoreMatch(book("Caf\u00e9 Society", "J. K. Rowling"), { title: "Cafe Society", author: "JK Rowling" }) > 0, "accents and initials");
+});
+
+test("verifySuggestions keeps only books Open Library has, in order, without duplicates", async () => {
+  const catalog = {
+    "The Lightning Thief": [
+      { openLibraryId: "OL10W", title: "The Lightning Thief", authors: [{ name: "Rick Riordan" }], readingLogCount: 500 },
+    ],
+    "Circe": [
+      { openLibraryId: "OL20W", title: "Circe", authors: [{ name: "Madeline Miller" }], readingLogCount: 300 },
+    ],
+  };
+  const searched = [];
+  const fakeSearch = async (query) => {
+    searched.push(query);
+    const title = Object.keys(catalog).find((name) => query.includes(name));
+    return title ? catalog[title] : [];
+  };
+  const verified = await verifySuggestions([
+    { title: "The Lightning Thief", author: "Rick Riordan", reason: "Greek myths at a camp." },
+    { title: "A Book That Does Not Exist", author: "Nobody Real", reason: "Invented." },
+    { title: "Circe", author: "Madeline Miller", reason: "Mythic retelling." },
+    { title: "Circe", author: "Madeline Miller", reason: "Duplicate." },
+  ], { search: fakeSearch });
+  assert.deepEqual(verified.map((entry) => entry.book.openLibraryId), ["OL10W", "OL20W"]);
+  assert.equal(verified[0].reason, "Greek myths at a camp.");
+});
+
+test("verifySuggestions reports Open Library as down only when every lookup failed", async () => {
+  const down = async () => { throw Object.assign(new Error("boom"), { code: "OPEN_LIBRARY_TIMEOUT" }); };
+  await assert.rejects(
+    verifySuggestions([{ title: "Dune", author: "Frank Herbert", reason: "r" }, { title: "Emma", author: "Jane Austen", reason: "r" }], { search: down }),
+    { code: "OPEN_LIBRARY_UNAVAILABLE", upstreamCode: "OPEN_LIBRARY_TIMEOUT" },
+  );
+  let calls = 0;
+  const flaky = async () => { calls += 1; if (calls <= 2) throw new Error("boom"); return []; };
+  assert.deepEqual(await verifySuggestions([{ title: "Dune", author: "Frank Herbert", reason: "r" }], { search: flaky, concurrency: 1 }).catch((e) => e.code), "OPEN_LIBRARY_UNAVAILABLE");
+});
+
+test("suggestion prompt carries the reader's request and reading context, and the schema is lenient on extras", () => {
+  const messages = suggestionMessages({
+    message: "greek mythology fantasy like harry potter",
+    history: [],
+    personalization: { genres: ["Fantasy"], preferredBooks: [{ title: "Loved Book", authors: ["A"] }], readingContext: [{ title: "Read Book", authors: ["B"], status: "READ", rating: 5 }], readBooks: ["OL9W"] },
+    preferences: { genres: [] },
+  });
+  const human = messages[messages.length - 1][1];
+  assert.match(human, /greek mythology/);
+  assert.match(human, /Read Book/);
+  assert.equal(suggestionResponseSchema.safeParse({
+    message: "Here you go.",
+    suggestions: [{ title: "Circe", author: "Madeline Miller", reason: "Fits.", extra: "ignored" }],
+  }).success, true);
+  assert.equal(suggestionResponseSchema.safeParse({ message: "Hi", suggestions: [{ title: "", author: "X", reason: "r" }] }).success, false);
+  assert.deepEqual(parseModelContent(JSON.stringify({ message: "Ask me more.", suggestions: [] }), suggestionResponseSchema), { message: "Ask me more.", suggestions: [] });
 });

@@ -5,12 +5,14 @@ import { useAuth } from "../context/useAuth";
 import { getDashboard, getShelves } from "../services/readingService";
 import { removeProfilePicture, updateProfile, uploadProfilePicture } from "../services/profileService";
 import Avatar from "../components/Avatar";
+import RecentActivity from "../components/RecentActivity";
 
 function Profile({ edit = false }) {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [shelves, setShelves] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
   const [form, setForm] = useState({
     displayName: user.displayName,
     bio: user.bio || "",
@@ -34,6 +36,7 @@ function Profile({ edit = false }) {
       .then(([dashboard, shelfData]) => {
         setStats(dashboard.stats);
         setShelves(shelfData.shelves);
+        setRecentActivity(dashboard.recentlyUpdated);
       })
       .catch((requestError) => setError(requestError.message || "Unable to load your profile."))
       .finally(() => setLoading(false));
@@ -152,6 +155,7 @@ function Profile({ edit = false }) {
         <article className="stat-card"><span>Currently reading</span><strong>{stats?.currentlyReading ?? 0}</strong></article>
         <article className="stat-card"><span>Want to read</span><strong>{stats?.wantToRead ?? 0}</strong></article>
       </section>
+      <RecentActivity entries={recentActivity} />
       <section className="dashboard-section">
         <div className="section-header"><h2>Public shelves</h2><Link to="/shelves">Manage visibility</Link></div>
         {publicShelves.length ? (

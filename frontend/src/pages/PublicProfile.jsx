@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import BookRow from "../components/BookRow";
 import Avatar from "../components/Avatar";
 import { getPublicProfile } from "../services/profileService";
+import RecentActivity from "../components/RecentActivity";
 
 function PublicProfile() {
   const { userId } = useParams();
@@ -35,6 +36,7 @@ function PublicProfile() {
         <article className="stat-card"><span>Currently reading</span><strong>{data.stats.currentlyReading}</strong></article>
         <article className="stat-card"><span>Want to read</span><strong>{data.stats.wantToRead}</strong></article>
       </section>
+      <RecentActivity entries={data.recentActivity} />
       {data.shelves.length ? data.shelves.map((shelf) => (
         <section className="dashboard-section" key={shelf.id}>
           <div className="section-header"><h2>{shelf.name}</h2><span>{shelf.books.length} books</span></div>

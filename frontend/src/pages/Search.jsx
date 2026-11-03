@@ -4,6 +4,8 @@ import { useSearchParams } from "react-router-dom";
 import BookRow from "../components/BookRow";
 import AddToShelfButton from "../components/AddToShelfButton";
 import { searchBooks } from "../services/bookService";
+import { useAuth } from "../context/useAuth";
+import { getShelves } from "../services/readingService";
 
 
 const SORT_OPTIONS = [
@@ -43,6 +45,7 @@ const SORT_OPTIONS = [
 
 
 function Search() {
+  const { user, loading: authLoading } = useAuth();
   const [searchParams, setSearchParams] =
     useSearchParams();
 
@@ -61,6 +64,21 @@ function Search() {
 
   const [error, setError] =
     useState("");
+  const [shelfResult, setShelfResult] = useState(null);
+  const shelves = shelfResult?.userId === user?.id ? shelfResult.shelves : [];
+  const shelfError = shelfResult?.userId === user?.id ? shelfResult.error : "";
+
+  useEffect(() => {
+    if (!user || authLoading) return undefined;
+
+    let active = true;
+    getShelves()
+      .then(({ shelves: result }) => { if (active) setShelfResult({ userId: user.id, shelves: result, error: "" }); })
+      .catch((requestError) => {
+        if (active) setShelfResult({ userId: user.id, shelves: [], error: requestError.message || "Unable to load your shelf status." });
+      });
+    return () => { active = false; };
+  }, [authLoading, user]);
 
 
   useEffect(() => {
@@ -191,6 +209,7 @@ function Search() {
         books.length > 0 && (
 
         <section className="search-results">
+          {shelfError && <p className="form-message error" role="alert">{shelfError}</p>}
 
           <div className="book-row-list">
 
@@ -198,7 +217,7 @@ function Search() {
               <BookRow
                 key={book.openLibraryId}
                 book={book}
-                actions={<AddToShelfButton book={book} />}
+                actions={<AddToShelfButton book={book} userShelves={shelves} />}
               />
             ))}
 

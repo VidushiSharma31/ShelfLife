@@ -3,8 +3,11 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { getBookById } from "../services/bookService";
 import AddToShelfButton from "../components/AddToShelfButton";
+import { useAuth } from "../context/useAuth";
+import { getShelves } from "../services/readingService";
 
 function BookDetails() {
+  const { user } = useAuth();
   const { openLibraryId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -12,6 +15,21 @@ function BookDetails() {
   const [book, setBook] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [shelfResult, setShelfResult] = useState(null);
+  const shelves = shelfResult?.userId === user?.id ? shelfResult.shelves : [];
+  const shelfError = shelfResult?.userId === user?.id ? shelfResult.error : "";
+
+  useEffect(() => {
+    if (!user) return undefined;
+
+    let active = true;
+    getShelves()
+      .then(({ shelves: result }) => { if (active) setShelfResult({ userId: user.id, shelves: result, error: "" }); })
+      .catch((requestError) => {
+        if (active) setShelfResult({ userId: user.id, shelves: [], error: requestError.message || "Unable to load your shelf status." });
+      });
+    return () => { active = false; };
+  }, [user]);
 
   useEffect(() => {
     const fetchBook = async () => {
@@ -111,7 +129,8 @@ function BookDetails() {
 
           {/* ACTIONS */}
           <div className="book-actions">
-            <AddToShelfButton book={book} initiallyOpen={Boolean(location.state?.openAddToShelf)} />
+            <AddToShelfButton book={book} userShelves={shelves} initiallyOpen={Boolean(location.state?.openAddToShelf)} />
+            {shelfError && <p className="form-message error" role="alert">{shelfError}</p>}
           </div>
 
 

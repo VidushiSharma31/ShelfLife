@@ -121,9 +121,25 @@ const checkRetrieval = async () => {
   }
 };
 
+const checkLookup = async () => {
+  console.log("\nSuggestion verification (title + author -> Open Library)");
+  const { verifySuggestions } = require("../services/bookLookup");
+  const samples = [
+    { title: "Percy Jackson and the Lightning Thief", author: "Rick Riordan", reason: "-" },
+    { title: "Circe", author: "Madeline Miller", reason: "-" },
+    { title: "The Hunger Games", author: "Suzanne Collins", reason: "-" },
+    { title: "A Book That Does Not Exist Xyzzy", author: "Nobody Real", reason: "-" },
+  ];
+  await timed("look up 4 sample suggestions (3 real, 1 fake; expect 3 found)", async () => {
+    const found = await verifySuggestions(samples);
+    return `${found.length} found: ${found.map((entry) => entry.book.title).join(" | ")}`;
+  });
+};
+
 (async () => {
   await checkGemini();
   await checkOpenLibrary();
+  await checkLookup();
   await checkRetrieval();
   console.log("");
 })();

@@ -6,7 +6,7 @@ const DEFAULT_RETRIES = 1;
 const MAX_TIMEOUT_MS = 40000;
 // Gemini 2.5/3 "thinking" models spend part of this budget on internal reasoning,
 // so a small limit (the old value was 700) can leave no room for the JSON answer.
-const DEFAULT_MAX_OUTPUT_TOKENS = 2048;
+const DEFAULT_MAX_OUTPUT_TOKENS = 3072;
 
 // Kept for backwards compatibility; the model actually used is read from env at call time.
 const GEMINI_MODEL = DEFAULT_MODEL;
@@ -98,12 +98,12 @@ const invokeWithRetry = async (invoke, {
   }
 };
 
-const invokeModel = async (modelName, messages, apiKey) => {
+const invokeModel = async (modelName, messages, apiKey, { temperature = 0.25 } = {}) => {
   const { ChatGoogleGenerativeAI } = await import("@langchain/google-genai");
   const model = new ChatGoogleGenerativeAI({
     apiKey,
     model: modelName,
-    temperature: 0.25,
+    temperature,
     maxOutputTokens: boundedEnvInteger("GEMINI_MAX_OUTPUT_TOKENS", DEFAULT_MAX_OUTPUT_TOKENS, 512, 8192),
     maxRetries: 0,
     json: true,
@@ -133,7 +133,7 @@ const invokeModel = async (modelName, messages, apiKey) => {
   });
 };
 
-const invokeGemini = async (messages) => {
+const invokeGemini = async (messages, options = {}) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     const error = new Error("Gemini is not configured");
@@ -145,7 +145,7 @@ const invokeGemini = async (messages) => {
   let lastError;
   for (let index = 0; index < models.length; index += 1) {
     try {
-      return await invokeModel(models[index], messages, apiKey);
+      return await invokeModel(models[index], messages, apiKey, options);
     } catch (error) {
       lastError = error;
       const hasFallback = index < models.length - 1;

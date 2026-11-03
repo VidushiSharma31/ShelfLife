@@ -6,6 +6,7 @@ import BookRow from "../components/BookRow";
 
 function ReadingEntryCard({ entry, shelves, onChanged }) {
   const isCurrentlyReading = entry.shelf?.status === "CURRENTLY_READING" || entry.status === "CURRENTLY_READING";
+  const isRead = entry.shelf?.status === "READ" || entry.status === "READ";
   const [currentPage, setCurrentPage] = useState(entry.currentPage ?? "");
   const [totalPages, setTotalPages] = useState(entry.totalPages ?? entry.book.pageCount ?? "");
   const [rating, setRating] = useState(entry.personalRating ?? "");
@@ -13,6 +14,7 @@ function ReadingEntryCard({ entry, shelves, onChanged }) {
   const [targetShelf, setTargetShelf] = useState(entry.shelfId);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [editingReview, setEditingReview] = useState(false);
 
   const save = async (event) => {
     event.preventDefault();
@@ -29,6 +31,7 @@ function ReadingEntryCard({ entry, shelves, onChanged }) {
         notes: notes || null,
       });
       await onChanged();
+      if (isRead) setEditingReview(false);
     } catch (requestError) {
       setError(requestError.message || "Unable to update this book.");
     } finally {
@@ -75,24 +78,32 @@ function ReadingEntryCard({ entry, shelves, onChanged }) {
           ) : <p className="progress-copy">Add the total page count to see a progress percentage.</p>}
         </div>
       )}
-      <form className="entry-edit-form" onSubmit={save}>
-        {isCurrentlyReading && (
+      {isRead && !editingReview && (
+        <button type="button" className="secondary-action review-edit-button" onClick={() => setEditingReview(true)}>
+          Edit review
+        </button>
+      )}
+      {(!isRead || editingReview) && (
+        <form className="entry-edit-form" onSubmit={save}>
+          {isCurrentlyReading && (
+            <div className="entry-field-row">
+              <label>Current page<input type="number" min="0" max={totalPages || 100000} value={currentPage} onChange={(event) => setCurrentPage(event.target.value)} /></label>
+              <label>Total pages<input type="number" min="1" max="100000" value={totalPages} onChange={(event) => setTotalPages(event.target.value)} placeholder="Unknown" /></label>
+            </div>
+          )}
           <div className="entry-field-row">
-            <label>Current page<input type="number" min="0" max={totalPages || 100000} value={currentPage} onChange={(event) => setCurrentPage(event.target.value)} /></label>
-            <label>Total pages<input type="number" min="1" max="100000" value={totalPages} onChange={(event) => setTotalPages(event.target.value)} placeholder="Unknown" /></label>
+            <label>Personal rating<select value={rating} onChange={(event) => setRating(event.target.value)}><option value="">Not rated</option>{[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value} / 5</option>)}</select></label>
+            <label>Move to shelf<select value={targetShelf} onChange={(event) => setTargetShelf(event.target.value)}>{shelves.map((shelf) => <option key={shelf.id} value={shelf.id}>{shelf.name}</option>)}</select></label>
           </div>
-        )}
-        <div className="entry-field-row">
-          <label>Personal rating<select value={rating} onChange={(event) => setRating(event.target.value)}><option value="">Not rated</option>{[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value} / 5</option>)}</select></label>
-          <label>Move to shelf<select value={targetShelf} onChange={(event) => setTargetShelf(event.target.value)}>{shelves.map((shelf) => <option key={shelf.id} value={shelf.id}>{shelf.name}</option>)}</select></label>
-        </div>
-        <label>Private notes<textarea rows="3" maxLength="5000" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Your notes are private." /></label>
-        {error && <p className="form-message error" role="alert">{error}</p>}
-        <div className="entry-actions">
-          <button type="submit" className="primary-action" disabled={saving}>{saving ? "Saving..." : isCurrentlyReading ? "Update progress" : "Save updates"}</button>
-          <button type="button" className="text-button danger-text" disabled={saving} onClick={remove}>Remove book</button>
-        </div>
-      </form>
+          <label>{isRead ? "Review / private notes" : "Private notes"}<textarea rows="3" maxLength="5000" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Your notes are private." /></label>
+          {error && <p className="form-message error" role="alert">{error}</p>}
+          <div className="entry-actions">
+            <button type="submit" className="primary-action" disabled={saving}>{saving ? "Saving..." : isRead ? "Save review" : isCurrentlyReading ? "Update progress" : "Save updates"}</button>
+            {isRead && <button type="button" className="secondary-action" disabled={saving} onClick={() => setEditingReview(false)}>Cancel</button>}
+            <button type="button" className="text-button danger-text" disabled={saving} onClick={remove}>Remove book</button>
+          </div>
+        </form>
+      )}
     </BookRow>
   );
 }
